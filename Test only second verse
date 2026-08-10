@@ -1,0 +1,304 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui") -- Changed to CoreGui for better security/visibility
+
+local LocalPlayer = Players.LocalPlayer
+local Lives = workspace:WaitForChild("Lives")
+
+-- Create GUI Elements
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AestheticNPCTeleporter"
+ScreenGui.ResetOnSpawn = false
+-- Parent to CoreGui so it persists and is harder to detect, 
+-- requires injector support. Change to PlayerGui if needed.
+if not pcall(function() ScreenGui.Parent = CoreGui end) then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 310)
+MainFrame.Position = UDim2.new(0.02, 0, 0.15, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundTransparency = 0.3
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Add UI Stroke for Neon Effect
+local FrameStroke = Instance.new("UIStroke")
+FrameStroke.Thickness = 2
+FrameStroke.Color = Color3.fromRGB(255, 50, 50)
+FrameStroke.Transparency = 0.2
+FrameStroke.Parent = MainFrame
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 12)
+Corner.Parent = MainFrame
+
+-- Hide/Unhide Button (Top Left)
+local HideButton = Instance.new("ImageButton")
+HideButton.Name = "HideButton"
+HideButton.Size = UDim2.new(0, 30, 0, 30)
+HideButton.Position = UDim2.new(0, 10, 0, 10)
+HideButton.BackgroundTransparency = 1
+-- Using a generic Roblox 'R' icon asset ID
+HideButton.Image = "rbxassetid://16711687379" 
+HideButton.ImageColor3 = Color3.fromRGB(255, 50, 50)
+HideButton.Parent = MainFrame
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(0.6, 0, 0, 40)
+Title.Position = UDim2.new(0.3, 0, 0, 5)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(255, 200, 200)
+Title.Text = "NPC Teleporter"
+Title.TextSize = 18
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- Dropdown Button / Display
+local DropdownButton = Instance.new("TextButton")
+DropdownButton.Name = "DropdownButton"
+DropdownButton.Size = UDim2.new(0.9, 0, 0, 45)
+DropdownButton.Position = UDim2.new(0.05, 0, 0, 60)
+DropdownButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+DropdownButton.Text = "Select Target NPC..."
+DropdownButton.TextSize = 16
+DropdownButton.Font = Enum.Font.Gotham
+DropdownButton.Parent = MainFrame
+
+local DropCorner = Instance.new("UICorner")
+DropCorner.CornerRadius = UDim.new(0, 8)
+DropCorner.Parent = DropdownButton
+
+local DropShadow = Instance.new("UIStroke")
+DropShadow.Thickness = 1
+DropShadow.Color = Color3.fromRGB(255, 100, 100)
+DropShadow.Parent = DropdownButton
+
+-- Scrolling Frame for Dropdown List
+local ScrollingFrame = Instance.new("ScrollingFrame")
+ScrollingFrame.Name = "ScrollingList"
+ScrollingFrame.Size = UDim2.new(0.9, 0, 0, 120)
+ScrollingFrame.Position = UDim2.new(0.05, 0, 0, 115)
+ScrollingFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ScrollingFrame.BackgroundTransparency = 0.5
+ScrollingFrame.BorderSizePixel = 0
+ScrollingFrame.Visible = false
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollingFrame.ScrollBarThickness = 6
+ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 50)
+ScrollingFrame.Parent = MainFrame
+
+local ListCorner = Instance.new("UICorner")
+ListCorner.CornerRadius = UDim.new(0, 8)
+ListCorner.Parent = ScrollingFrame
+
+-- Auto TP Container (Button + Toggle)
+local AutoTpContainer = Instance.new("Frame")
+AutoTpContainer.Name = "AutoTpContainer"
+AutoTpContainer.Size = UDim2.new(0.9, 0, 0, 45)
+AutoTpContainer.Position = UDim2.new(0.05, 0, 0, 245)
+AutoTpContainer.BackgroundTransparency = 1
+AutoTpContainer.Parent = MainFrame
+
+-- Auto TP Button
+local TpButton = Instance.new("TextButton")
+TpButton.Name = "TpButton"
+TpButton.Size = UDim2.new(0.75, 0, 1, 0)
+TpButton.Position = UDim2.new(0, 0, 0, 0)
+TpButton.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+TpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+TpButton.Text = "TP & Fly-Tween"
+TpButton.TextSize = 16
+TpButton.Font = Enum.Font.GothamBold
+TpButton.Parent = AutoTpContainer
+
+local TpCorner = Instance.new("UICorner")
+TpCorner.CornerRadius = UDim.new(0, 8)
+TpCorner.Parent = TpButton
+
+-- Auto TP Toggle Switch
+local ToggleBg = Instance.new("Frame")
+ToggleBg.Name = "ToggleBg"
+ToggleBg.Size = UDim2.new(0.2, 0, 0.6, 0)
+ToggleBg.Position = UDim2.new(0.78, 0, 0.2, 0)
+ToggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+ToggleBg.Parent = AutoTpContainer
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(1, 0)
+ToggleBg.Parent = ToggleBg -- Corrected parent
+
+local ToggleCircle = Instance.new("Frame")
+ToggleCircle.Name = "ToggleCircle"
+ToggleCircle.Size = UDim2.new(0.5, -4, 1, -4)
+ToggleCircle.Position = UDim2.new(0, 2, 0, 2)
+ToggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ToggleCircle.Parent = ToggleBg
+
+local ToggleCornerCircle = Instance.new("UICorner")
+ToggleCornerCircle.CornerRadius = UDim.new(1, 0)
+ToggleCircle.Parent = ToggleCircle
+
+-- State Variables
+local selectedNPCInstance = nil
+local dropdownOpen = false
+local autoTpEnabled = false
+
+-- Function to scan workspace.Lives
+local function getNPCData()
+    local npcs = {}
+    if not Lives.Parent then return npcs end -- Lives might be nil if not fully loaded
+
+    for _, child in ipairs(Lives:GetChildren()) do
+        if child:IsA("Model") then
+            local humanoid = child:FindFirstChildOfClass("Humanoid")
+            local rootPart = child:FindFirstChild("HumanoidRootPart") or child.PrimaryPart
+            if humanoid and rootPart and humanoid.Health > 0 then
+                local displayName = humanoid.DisplayName
+                if displayName == "" then
+                    displayName = child.Name -- Fallback
+                end
+                table.insert(npcs, {Name = displayName, Instance = child, Root = rootPart})
+            end
+        end
+    end
+    return npcs
+end
+
+-- Update Dropdown List
+local function updateDropdown()
+    for _, child in ipairs(ScrollingFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    local npcs = getNPCData()
+    local yOffset = 0
+    local buttonHeight = 30
+    
+    for _, npc in ipairs(npcs) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, buttonHeight)
+        btn.Position = UDim2.new(0, 5, 0, yOffset)
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        btn.BackgroundTransparency = 0.5
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Text = npc.Name
+        btn.TextSize = 14
+        btn.Font = Enum.Font.Gotham
+        btn.Parent = ScrollingFrame
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = btn
+        
+        btn.MouseButton1Click:Connect(function()
+            selectedNPCInstance = npc
+            DropdownButton.Text = "Tgt: "..npc.Name
+            ScrollingFrame.Visible = false
+            dropdownOpen = false
+        end)
+        
+        yOffset = yOffset + buttonHeight + 5
+    end
+    
+    ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset)
+end
+
+-- Teleport Logic
+local function tweenToTarget(targetRoot)
+    local character = LocalPlayer.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not rootPart or not humanoid then return end
+
+    -- 1. Initial Teleport (instantly move above target)
+    rootPart.CFrame = targetRoot.CFrame + Vector3.new(0, 12, 0)
+    
+    -- 2. Stay flying (PlatformStand disables falling physics)
+    humanoid.PlatformStand = true
+    rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    
+    -- 3. Smooth Tween to target while hovering
+    local destCFrame = targetRoot.CFrame + Vector3.new(0, 7, 0)
+    local tweenInfo = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = destCFrame})
+    
+    tween:Play()
+    tween.Completed:Wait()
+    
+    -- Restore normal state
+    humanoid.PlatformStand = false
+    rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+end
+
+-- Toggle Auto TP
+local function toggleAutoTp()
+    autoTpEnabled = not autoTpEnabled
+    if autoTpEnabled then
+        -- Tween Toggle Circle ON
+        TweenService:Create(ToggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0.5, 2)}):Play()
+        ToggleBg.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- Red when ON
+    else
+        -- Tween Toggle Circle OFF
+        TweenService:Create(ToggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 2)}):Play()
+        ToggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 80) -- Gray when OFF
+    end
+end
+
+-- Event Connections
+DropdownButton.MouseButton1Click:Connect(function()
+    dropdownOpen = not dropdownOpen
+    if dropdownOpen then
+        updateDropdown()
+    end
+    ScrollingFrame.Visible = dropdownOpen
+end)
+
+TpButton.MouseButton1Click:Connect(function()
+    if selectedNPCInstance and selectedNPCInstance.Instance and selectedNPCInstance.Instance.Parent then
+        tweenToTarget(selectedNPCInstance.Root)
+    else
+        DropdownButton.Text = "Target Invalid/Defeated"
+        selectedNPCInstance = nil
+    end
+end)
+
+ToggleBg.MouseButton1Click:Connect(toggleAutoTp)
+-- Make the circle clickable too since it covers most of the background
+ToggleCircle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        toggleAutoTp()
+    end
+end)
+
+-- Hide/Unhide Functionality
+local guiVisible = true
+HideButton.MouseButton1Click:Connect(function()
+    guiVisible = not guiVisible
+    for _, obj in ipairs(MainFrame:GetChildren()) do
+        if obj.Name ~= "HideButton" and obj.Name ~= "FrameStroke" and obj.Name ~= "Title" then
+            if obj:IsA("GuiObject") then
+                obj.Visible = guiVisible
+            end
+        end
+    end
+    if guiVisible then
+        MainFrame.Size = UDim2.new(0, 260, 0, 310)
+        Title.Text = "NPC Teleporter"
+        HideButton.ImageTransparency = 0
+    else
+        MainFrame.Size = UDim2.new(0, 100, 0, 50)
+        Title.Text = ""
+        HideButton.ImageTransparency = 0.5
+    end
+end)
